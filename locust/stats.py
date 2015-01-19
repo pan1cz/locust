@@ -478,7 +478,7 @@ def print_json(stats):
 
     console_logger.info(stats)
     try:
-        with open("results.json", "w") as outfile:
+        with open("locust-results.json", "w") as outfile:
             outfile.write(stats)
     except IOError as e:
         console_logger.info('Failed to create results file - ' + str(e))
