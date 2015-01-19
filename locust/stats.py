@@ -417,6 +417,8 @@ global_stats = RequestStats()
 A global instance for holding the statistics. Should be removed eventually.
 """
 
+global_start_time = time.time()
+
 def on_request_success(request_type, name, response_time, response_length):
     if global_stats.max_requests is not None and (global_stats.num_requests + global_stats.num_failures) >= global_stats.max_requests:
         raise StopLocust("Maximum number of requests reached")
@@ -470,6 +472,7 @@ def print_json(stats):
         "total_rps": total_rps,
         "total_reqs": total_reqs,
         "total_failures": total_failures,
+        "start_time": global_start_time,
         "requests": requests
     }, sort_keys=True, indent=4, separators=(',', ': '))
 
