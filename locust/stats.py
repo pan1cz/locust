@@ -455,7 +455,7 @@ events.report_to_master += on_report_to_master
 events.slave_report += on_slave_report
 
 # Output results to console and results.json file in JSON format
-def print_json(stats):
+def print_json(stats, resultfile):
     total_rps = 0
     total_reqs = 0
     total_failures = 0
@@ -478,7 +478,7 @@ def print_json(stats):
 
     console_logger.info(stats)
     try:
-        with open("locust-results.json", "w") as outfile:
+        with open(resultfile, "w") as outfile:
             outfile.write(stats)
     except IOError as e:
         console_logger.info('Failed to create results file - ' + str(e))

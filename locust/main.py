@@ -229,13 +229,23 @@ def parse_options():
         help="print json data of the locust classes' task execution ratio"
     )
     
-    # if we should print stats in the console
+    # if we should print json stats in the console
     parser.add_option(
         '--print-json',
         action='store_true',
         dest='print_json',
         default=False,
         help="Print stats as JSON"
+    )
+
+    # results file
+    parser.add_option(
+        '--resultfile',
+        action='store',
+        type='str',
+        dest='resultfile',
+        default=None,
+        help="Path to results file. If not set, results will go to stdout/stderr",
     )
 
     # Version number (optparse gives you --version but we have to do it
@@ -363,8 +373,10 @@ def main():
         print_stats(runners.locust_runner.request_stats)
         print_percentile_stats(runners.locust_runner.request_stats)
 
-        if options.print_json:
-            print_json(runners.locust_runner.request_stats)
+        if options.print_json and options.resultfile:
+            print_json(runners.locust_runner.request_stats, options.resultfile)
+        else
+            print_json(runners.locust_runner.request_stats, "locust-results.json")
         
         print_error_report()
         sys.exit(code)
