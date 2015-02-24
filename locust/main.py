@@ -375,7 +375,7 @@ def main():
 
         if options.print_json and options.resultfile:
             print_json(runners.locust_runner.request_stats, options.resultfile)
-        else
+        else:
             print_json(runners.locust_runner.request_stats, "locust-results.json")
         
         print_error_report()
