@@ -42,6 +42,28 @@ sh.setFormatter(logging.Formatter('%(message)s'))
 console_logger.addHandler(sh)
 console_logger.propagate = False
 
+# set up logger for the statistics tables
+stats_logger = logging.getLogger("stats_logger")
+# create console handler
+sh = logging.StreamHandler()
+sh.setLevel(logging.INFO)
+# formatter that doesn't include anything but the message
+sh.setFormatter(logging.Formatter('%(message)s'))
+stats_logger.addHandler(sh)
+stats_logger.propagate = False
+
+def setup_stats_logger(log_file):
+    # Check if handler is a file or not
+    if log_file == "":
+        handler = logging.StreamHandler()
+    else:
+        handler = logging.FileHandler(log_file)
+    handler.setLevel(logging.INFO)
+    # formatter that doesn't include anything but the message
+    handler.setFormatter(logging.Formatter('%(message)s'))
+    # attach handler
+    stats_logger.addHandler(handler)
+
 # configure python-requests log level
 requests_log = logging.getLogger("requests")
 requests_log.setLevel(logging.WARNING)

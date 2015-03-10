@@ -5,7 +5,7 @@ import json
 
 import events
 from exception import StopLocust
-from log import console_logger
+from log import stats_logger
 
 STATS_NAME_WIDTH = 60
 
@@ -476,16 +476,16 @@ def print_json(stats, resultfile):
         "requests": requests
     }, sort_keys=True, indent=4, separators=(',', ': '))
 
-    console_logger.info(stats)
+    stats_logger.info(stats)
     try:
         with open(resultfile, "w") as outfile:
             outfile.write(stats)
     except IOError as e:
-        console_logger.info('Failed to create results file - ' + str(e))
+        stats_logger.info('Failed to create results file - ' + str(e))
 
 def print_stats(stats):
-    console_logger.info((" %-" + str(STATS_NAME_WIDTH) + "s %7s %12s %7s %7s %7s  | %7s %7s") % ('Name', '# reqs', '# fails', 'Avg', 'Min', 'Max', 'Median', 'req/s'))
-    console_logger.info("-" * (80 + STATS_NAME_WIDTH))
+    stats_logger.info((" %-" + str(STATS_NAME_WIDTH) + "s %7s %12s %7s %7s %7s  | %7s %7s") % ('Name', '# reqs', '# fails', 'Avg', 'Min', 'Max', 'Median', 'req/s'))
+    stats_logger.info("-" * (80 + STATS_NAME_WIDTH))
     total_rps = 0
     total_reqs = 0
     total_failures = 0
@@ -494,42 +494,42 @@ def print_stats(stats):
         total_rps += r.current_rps
         total_reqs += r.num_requests
         total_failures += r.num_failures
-        console_logger.info(r)
-    console_logger.info("-" * (80 + STATS_NAME_WIDTH))
+        stats_logger.info(r)
+    stats_logger.info("-" * (80 + STATS_NAME_WIDTH))
 
     try:
         fail_percent = (total_failures/float(total_reqs))*100
     except ZeroDivisionError:
         fail_percent = 0
 
-    console_logger.info((" %-" + str(STATS_NAME_WIDTH) + "s %7d %12s %42.2f") % ('Total', total_reqs, "%d(%.2f%%)" % (total_failures, fail_percent), total_rps))
-    console_logger.info("")
+    stats_logger.info((" %-" + str(STATS_NAME_WIDTH) + "s %7d %12s %42.2f") % ('Total', total_reqs, "%d(%.2f%%)" % (total_failures, fail_percent), total_rps))
+    stats_logger.info("")
 
 def print_percentile_stats(stats):
-    console_logger.info("Percentage of the requests completed within given times")
-    console_logger.info((" %-" + str(STATS_NAME_WIDTH) + "s %8s %6s %6s %6s %6s %6s %6s %6s %6s %6s") % ('Name', '# reqs', '50%', '66%', '75%', '80%', '90%', '95%', '98%', '99%', '100%'))
-    console_logger.info("-" * (80 + STATS_NAME_WIDTH))
+    stats_logger.info("Percentage of the requests completed within given times")
+    stats_logger.info((" %-" + str(STATS_NAME_WIDTH) + "s %8s %6s %6s %6s %6s %6s %6s %6s %6s %6s") % ('Name', '# reqs', '50%', '66%', '75%', '80%', '90%', '95%', '98%', '99%', '100%'))
+    stats_logger.info("-" * (80 + STATS_NAME_WIDTH))
     for key in sorted(stats.iterkeys()):
         r = stats[key]
         if r.response_times:
-            console_logger.info(r.percentile())
-    console_logger.info("-" * (80 + STATS_NAME_WIDTH))
+            stats_logger.info(r.percentile())
+    stats_logger.info("-" * (80 + STATS_NAME_WIDTH))
     
     total_stats = global_stats.aggregated_stats()
     if total_stats.response_times:
-        console_logger.info(total_stats.percentile())
-    console_logger.info("")
+        stats_logger.info(total_stats.percentile())
+    stats_logger.info("")
 
 def print_error_report():
     if not len(global_stats.errors):
         return
-    console_logger.info("Error report")
-    console_logger.info(" %-18s %-100s" % ("# occurences", "Error"))
-    console_logger.info("-" * (80 + STATS_NAME_WIDTH))
+    stats_logger.info("Error report")
+    stats_logger.info(" %-18s %-100s" % ("# occurences", "Error"))
+    stats_logger.info("-" * (80 + STATS_NAME_WIDTH))
     for error in global_stats.errors.itervalues():
-        console_logger.info(" %-18i %-100s" % (error.occurences, error.to_name()))
-    console_logger.info("-" * (80 + STATS_NAME_WIDTH))
-    console_logger.info("")
+        stats_logger.info(" %-18i %-100s" % (error.occurences, error.to_name()))
+    stats_logger.info("-" * (80 + STATS_NAME_WIDTH))
+    stats_logger.info("")
 
 def stats_printer():
     from runners import locust_runner
