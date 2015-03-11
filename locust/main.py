@@ -11,7 +11,7 @@ import socket
 from optparse import OptionParser
 
 import web
-from log import setup_logging, console_logger, setup_stats_logger
+from log import setup_logging, console_logger
 from stats import stats_printer, print_percentile_stats, print_error_report, print_stats, print_json
 from inspectlocust import print_task_ratio, get_task_ratio_dict
 from core import Locust, HttpLocust
@@ -183,16 +183,6 @@ def parse_options():
         dest='logfile',
         default=None,
         help="Path to log file. If not set, log will go to stdout/stderr",
-    )
-
-    # stats log file
-    parser.add_option(
-        '--results-file',
-        action='store',
-        type='str',
-        dest='resultsfile',
-        default=None,
-        help="Path to results file. If not set, stats will go to stdout/stderr",
     )
     
     # if we should print stats in the console
@@ -394,7 +384,7 @@ def main():
     # setup logging
     setup_logging(options.loglevel, options.logfile)
     logger = logging.getLogger(__name__)
-
+    
     if options.show_version:
         print "Locust %s" % (version,)
         sys.exit(0)
@@ -454,9 +444,6 @@ def main():
     if options.master and options.no_web:
         logger.error("Locust can not run distributed with the web interface disabled (do not use --no-web and --master together)")
         sys.exit(0)
-
-    if options.resultfile:
-        setup_stats_logger(options.resultsfile)
 
     if not options.no_web and not options.slave:
         # spawn web greenlet
