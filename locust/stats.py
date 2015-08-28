@@ -459,6 +459,7 @@ def print_json(stats, resultfile):
     total_rps = 0
     total_reqs = 0
     total_failures = 0
+    total_avg_response_time = 0 
     requests = []
 
     for key in sorted(stats.iterkeys()):
@@ -466,6 +467,7 @@ def print_json(stats, resultfile):
         total_rps += r.current_rps
         total_reqs += r.num_requests
         total_failures += r.num_failures
+        total_avg_response_time += r.avg_response_time
         requests.append(r.serialize())
 
     stats = json.dumps({
@@ -473,7 +475,8 @@ def print_json(stats, resultfile):
         "total_reqs": total_reqs,
         "total_failures": total_failures,
         "start_time": global_start_time,
-        "requests": requests
+        "requests": requests,
+        "total_avg_response_time": total_avg_response_time
     }, sort_keys=True, indent=4, separators=(',', ': '))
 
     console_logger.info(stats)
@@ -489,11 +492,13 @@ def print_stats(stats):
     total_rps = 0
     total_reqs = 0
     total_failures = 0
+    total_avg_response_time = 0
     for key in sorted(stats.iterkeys()):
         r = stats[key]
         total_rps += r.current_rps
         total_reqs += r.num_requests
         total_failures += r.num_failures
+        total_avg_response_time += r.avg_response_time
         console_logger.info(r)
     console_logger.info("-" * (80 + STATS_NAME_WIDTH))
 
