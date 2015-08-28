@@ -373,7 +373,7 @@ def main():
         print_stats(runners.locust_runner.request_stats)
         print_percentile_stats(runners.locust_runner.request_stats)
 
-        if options.print_json
+        if options.print_json:
             print_json(runners.locust_runner.request_stats, options.resultfile)
         
         print_error_report()
