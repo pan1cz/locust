@@ -454,7 +454,7 @@ events.request_failure += on_request_failure
 events.report_to_master += on_report_to_master
 events.slave_report += on_slave_report
 
-# Output results to console and results.json file in JSON format
+# Output stats in JSON format and to a file if provided
 def print_json(stats, resultfile):
     total_rps = 0
     total_reqs = 0
@@ -479,12 +479,14 @@ def print_json(stats, resultfile):
         "total_avg_response_time": total_avg_response_time
     }, sort_keys=True, indent=4, separators=(',', ': '))
 
-    console_logger.info(stats)
-    try:
-        with open(resultfile, "w") as outfile:
-            outfile.write(stats)
-    except IOError as e:
-        console_logger.info('Failed to create results file - ' + str(e))
+    if resultfile:
+        try:
+            with open(resultfile, "w") as outfile:
+                outfile.write(stats)
+        except IOError as e:
+            console_logger.info('Failed to create results file - ' + str(e))
+    else:
+        console_logger.info(stats)
 
 def print_stats(stats):
     console_logger.info((" %-" + str(STATS_NAME_WIDTH) + "s %7s %12s %7s %7s %7s  | %7s %7s") % ('Name', '# reqs', '# fails', 'Avg', 'Min', 'Max', 'Median', 'req/s'))
@@ -507,7 +509,7 @@ def print_stats(stats):
     except ZeroDivisionError:
         fail_percent = 0
 
-    console_logger.info((" %-" + str(STATS_NAME_WIDTH) + "s %7d %12s %42.2f") % ('Total', total_reqs, "%d(%.2f%%)" % (total_failures, fail_percent), total_rps))
+    console_logger.info((" %-" + str(STATS_NAME_WIDTH) + "s %7d %12s %7s %35.2f") % ('Total', total_reqs, total_avg_response_time, "%d(%.2f%%)" % (total_failures, fail_percent), total_rps))
     console_logger.info("")
 
 def print_percentile_stats(stats):
