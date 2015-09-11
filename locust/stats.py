@@ -509,7 +509,7 @@ def print_stats(stats):
     except ZeroDivisionError:
         fail_percent = 0
 
-    console_logger.info((" %-" + str(STATS_NAME_WIDTH) + "s %7d %12s %7s %35.2f") % ('Total', total_reqs, total_avg_response_time, "%d(%.2f%%)" % (total_failures, fail_percent), total_rps))
+    console_logger.info((" %-" + str(STATS_NAME_WIDTH) + "s %7d %12s %42.2f") % ('Total', total_reqs, "%d(%.2f%%)" % (total_failures, fail_percent), total_rps))
     console_logger.info("")
 
 def print_percentile_stats(stats):
