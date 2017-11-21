@@ -1,11 +1,12 @@
-# encoding: utf-8
+# -*- coding: utf-8 -*-
 
 """
 This is an example of a locustfile that uses Locust's built in event hooks to 
 track the sum of the content-length header in all successful HTTP responses
 """
 
-from locust import HttpLocust, TaskSet, task, events, web
+from locust import HttpLocust, TaskSet, events, task, web
+
 
 class MyTaskSet(TaskSet):
     @task(2)
@@ -26,8 +27,8 @@ class WebsiteUser(HttpLocust):
 """
 We need somewhere to store the stats.
 
-On  the master node stats will contain the aggregated sum of all content-lengths,
-while one the slave nodes this will be the sum of the content-lengths since the 
+On the master node stats will contain the aggregated sum of all content-lengths,
+while on the slave nodes this will be the sum of the content-lengths since the 
 last stats report was sent to the master
 """
 stats = {"content-length":0}

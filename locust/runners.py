@@ -1,20 +1,22 @@
-# coding=UTF-8
+# -*- coding: utf-8 -*-
+import logging
+import random
 import socket
 import traceback
 import warnings
-import random
-import logging
-from time import time
 from hashlib import md5
+from time import time
 
 import gevent
+import six
 from gevent import GreenletExit
 from gevent.pool import Group
 
-import events
-from stats import global_stats
+from six.moves import xrange
 
-from rpc import rpc, Message
+from . import events
+from .rpc import Message, rpc
+from .stats import global_stats
 
 import sys
 
@@ -29,12 +31,13 @@ SLAVE_REPORT_INTERVAL = 3.0
 
 class LocustRunner(object):
     def __init__(self, locust_classes, options):
+        self.options = options
         self.locust_classes = locust_classes
         self.hatch_rate = options.hatch_rate
         self.num_clients = options.num_clients
-        self.num_requests = options.num_requests
         self.host = options.host
         self.locusts = Group()
+        self.greenlet = self.locusts
         self.state = STATE_INIT
         self.hatching_greenlet = None
         self.exceptions = {}
@@ -43,8 +46,9 @@ class LocustRunner(object):
         # register listener that resets stats when hatching is complete
         def on_hatch_complete(user_count):
             self.state = STATE_RUNNING
-            # logger.info("Resetting stats\n")
-            # self.stats.reset_all()
+            if self.options.reset_stats:
+                logger.info("Resetting stats\n")
+                self.stats.reset_all()
         events.hatch_complete += on_hatch_complete
 
     @property
@@ -86,9 +90,6 @@ class LocustRunner(object):
         if spawn_count is None:
             spawn_count = self.num_clients
 
-        if self.num_requests is not None:
-            self.stats.max_requests = self.num_requests
-
         bucket = self.weight_locusts(spawn_count, stop_timeout)
         spawn_count = len(bucket)
         if self.state == STATE_INIT or self.state == STATE_STOPPED:
@@ -104,7 +105,7 @@ class LocustRunner(object):
             sleep_time = 1.0 / self.hatch_rate
             while True:
                 if not bucket:
-                    logger.info("All locusts hatched: %s" % ", ".join(["%s: %d" % (name, count) for name, count in occurence_count.iteritems()]))
+                    logger.info("All locusts hatched: %s" % ", ".join(["%s: %d" % (name, count) for name, count in six.iteritems(occurence_count)]))
                     events.hatch_complete.fire(user_count=self.num_clients)
                     return
 
@@ -149,6 +150,7 @@ class LocustRunner(object):
             self.stats.clear_all()
             self.stats.start_time = time()
             self.exceptions = {}
+            events.locust_start_hatching.fire()
 
         # Dynamically changing the locust count
         if self.state != STATE_INIT and self.state != STATE_STOPPED:
@@ -179,6 +181,11 @@ class LocustRunner(object):
             self.hatching_greenlet.kill(block=True)
         self.locusts.kill(block=True)
         self.state = STATE_STOPPED
+        events.locust_stop_hatching.fire()
+    
+    def quit(self):
+        self.stop()
+        self.greenlet.kill(block=True)
 
     def log_exception(self, node_id, msg, formatted_tb):
         key = hash(formatted_tb)
@@ -235,7 +242,7 @@ class MasterLocustRunner(DistributedLocustRunner):
         
         class SlaveNodesDict(dict):
             def get_by_state(self, state):
-                return [c for c in self.itervalues() if c.state == state]
+                return [c for c in six.itervalues(self) if c.state == state]
             
             @property
             def ready(self):
@@ -250,11 +257,6 @@ class MasterLocustRunner(DistributedLocustRunner):
                 return self.get_by_state(STATE_RUNNING)
         
         self.clients = SlaveNodesDict()
-        
-        self.client_stats = {}
-        self.client_errors = {}
-        self._request_stats = {}
-
         self.server = rpc.Server(self.master_bind_host, self.master_bind_port)
         self.greenlet = Group()
         self.greenlet.spawn(self.client_listener).link_exception(callback=self.noop)
@@ -273,12 +275,9 @@ class MasterLocustRunner(DistributedLocustRunner):
             self.quit()
         events.quitting += on_quitting
     
-    def noop(self, *args, **kwargs):
-        pass
-    
     @property
     def user_count(self):
-        return sum([c.user_count for c in self.clients.itervalues()])
+        return sum([c.user_count for c in six.itervalues(self.clients)])
     
     def start_hatching(self, locust_count, hatch_rate):
         num_slaves = len(self.clients.ready) + len(self.clients.running)
@@ -288,7 +287,7 @@ class MasterLocustRunner(DistributedLocustRunner):
             return
 
         self.num_clients = locust_count
-        slave_num_clients = locust_count / (num_slaves or 1)
+        slave_num_clients = locust_count // (num_slaves or 1)
         slave_hatch_rate = float(hatch_rate) / (num_slaves or 1)
         remaining = locust_count % num_slaves
 
@@ -297,12 +296,12 @@ class MasterLocustRunner(DistributedLocustRunner):
         if self.state != STATE_RUNNING and self.state != STATE_HATCHING:
             self.stats.clear_all()
             self.exceptions = {}
+            events.master_start_hatching.fire()
         
-        for client in self.clients.itervalues():
+        for client in six.itervalues(self.clients):
             data = {
                 "hatch_rate":slave_hatch_rate,
                 "num_clients":slave_num_clients,
-                "num_requests": self.num_requests,
                 "host":self.host,
                 "stop_timeout":None
             }
@@ -319,9 +318,10 @@ class MasterLocustRunner(DistributedLocustRunner):
     def stop(self):
         for client in self.clients.hatching + self.clients.running:
             self.server.send(Message("stop", None, None))
+        events.master_stop_hatching.fire()
     
     def quit(self):
-        for client in self.clients.itervalues():
+        for client in six.itervalues(self.clients):
             self.server.send(Message("quit", None, None))
         self.greenlet.kill(block=True)
     
@@ -348,7 +348,7 @@ class MasterLocustRunner(DistributedLocustRunner):
                 self.clients[msg.node_id].state = STATE_RUNNING
                 self.clients[msg.node_id].user_count = msg.data["count"]
                 if len(self.clients.hatching) == 0:
-                    count = sum(c.user_count for c in self.clients.itervalues())
+                    count = sum(c.user_count for c in six.itervalues(self.clients))
                     events.hatch_complete.fire(user_count=count)
             elif msg.type == "quit":
                 if msg.node_id in self.clients:
@@ -364,7 +364,7 @@ class MasterLocustRunner(DistributedLocustRunner):
 class SlaveLocustRunner(DistributedLocustRunner):
     def __init__(self, *args, **kwargs):
         super(SlaveLocustRunner, self).__init__(*args, **kwargs)
-        self.client_id = socket.gethostname() + "_" + md5(str(time() + random.randint(0,10000))).hexdigest()
+        self.client_id = socket.gethostname() + "_" + md5(str(time() + random.randint(0,10000)).encode('utf-8')).hexdigest()
         
         self.client = rpc.Client(self.master_host, self.master_port)
         self.greenlet = Group()
@@ -394,9 +394,6 @@ class SlaveLocustRunner(DistributedLocustRunner):
             self.client.send(Message("exception", {"msg" : str(exception), "traceback" : formatted_tb}, self.client_id))
         events.locust_error += on_locust_error
 
-    def noop(self, *args, **kwargs):
-        pass
-
     def worker(self):
         while True:
             msg = self.client.recv()
@@ -405,7 +402,6 @@ class SlaveLocustRunner(DistributedLocustRunner):
                 job = msg.data
                 self.hatch_rate = job["hatch_rate"]
                 #self.num_clients = job["num_clients"]
-                self.num_requests = job["num_requests"]
                 self.host = job["host"]
                 self.hatching_greenlet = gevent.spawn(lambda: self.start_hatching(locust_count=job["num_clients"], hatch_rate=job["hatch_rate"]))
             elif msg.type == "stop":

@@ -1,22 +1,19 @@
 import re
 import time
-from urlparse import urlparse, urlunparse
 
 import requests
-from requests import Response, Request
+import six
+from requests import Request, Response
 from requests.auth import HTTPBasicAuth
-from requests.exceptions import (RequestException, MissingSchema,
-    InvalidSchema, InvalidURL)
+from requests.exceptions import (InvalidSchema, InvalidURL, MissingSchema,
+                                 RequestException)
 
-import events
-from exception import CatchResponseError, ResponseError
+from six.moves.urllib.parse import urlparse, urlunparse
+
+from . import events
+from .exception import CatchResponseError, ResponseError
 
 absolute_http_url_regexp = re.compile(r"^https?://", re.I)
-
-
-def timedelta_to_ms(td):
-    "python 2.7 has a total_seconds method for timedelta objects. This is here for py<2.7 compat."
-    return int((td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**3) 
 
 
 class LocustResponse(Response):
@@ -51,7 +48,7 @@ class HttpSession(requests.Session):
                            and then mark it as successful even if the response code was not (i.e 500 or 404).
     """
     def __init__(self, base_url, *args, **kwargs):
-        requests.Session.__init__(self, *args, **kwargs)
+        super(HttpSession, self).__init__(*args, **kwargs)
 
         self.base_url = base_url
         
@@ -91,13 +88,14 @@ class HttpSession(requests.Session):
         :param data: (optional) Dictionary or bytes to send in the body of the :class:`Request`.
         :param headers: (optional) Dictionary of HTTP Headers to send with the :class:`Request`.
         :param cookies: (optional) Dict or CookieJar object to send with the :class:`Request`.
-        :param files: (optional) Dictionary of 'filename': file-like-objects for multipart encoding upload.
+        :param files: (optional) Dictionary of ``'filename': file-like-objects`` for multipart encoding upload.
         :param auth: (optional) Auth tuple or callable to enable Basic/Digest/Custom HTTP Auth.
-        :param timeout: (optional) Float describing the timeout of the request.
-        :param allow_redirects: (optional) Boolean. Set to True by default.
+        :param timeout: (optional) How long to wait for the server to send data before giving up, as a float, 
+            or a (`connect timeout, read timeout <user/advanced.html#timeouts>`_) tuple.
+        :type timeout: float or tuple
+        :param allow_redirects: (optional) Set to True by default.
+        :type allow_redirects: bool
         :param proxies: (optional) Dictionary mapping protocol to the URL of the proxy.
-        :param return_response: (optional) If False, an un-sent Request object will returned.
-        :param config: (optional) A configuration dictionary. See ``request.defaults`` for allowed keys and their default values.
         :param stream: (optional) whether to immediately download the response content. Defaults to ``False``.
         :param verify: (optional) if ``True``, the SSL cert will be verified. A CA_BUNDLE path can also be provided.
         :param cert: (optional) if String, path to ssl client cert file (.pem). If Tuple, ('cert', 'key') pair.
@@ -110,15 +108,16 @@ class HttpSession(requests.Session):
         request_meta = {}
         
         # set up pre_request hook for attaching meta data to the request object
+        request_meta["method"] = method
         request_meta["start_time"] = time.time()
         
         response = self._send_request_safe_mode(method, url, **kwargs)
         
-        request_meta["method"] = response.request.method
-        request_meta["name"] = name or response.request.path_url 
-
         # record the consumed time
-        request_meta["response_time"] = timedelta_to_ms(response.elapsed) 
+        request_meta["response_time"] = int((time.time() - request_meta["start_time"]) * 1000)
+        
+    
+        request_meta["name"] = name or (response.history and response.history[0] or response).request.path_url
         
         # get the length of the content, but if the argument stream is set to True, we take
         # the size from the content-length header, in order to not trigger fetching of the body
@@ -237,7 +236,7 @@ class ResponseContextManager(LocustResponse):
                 if response.content == "":
                     response.failure("No data")
         """
-        if isinstance(exc, basestring):
+        if isinstance(exc, six.string_types):
             exc = CatchResponseError(exc)
         
         events.request_failure.fire(

@@ -2,6 +2,64 @@
 Changelog
 ##########
 
+0.8
+===
+
+* Python 3 support
+* Dropped support for Python 2.6
+* Added `--no-reset-stats` option for controling if the statistics should be reset once 
+  the hatching is complete
+* Added charts to the web UI for requests per second, average response time, and number of 
+  simulated users.
+* Updated the design of the web UI.
+* Added ability to write a CSV file for results via command line flag
+* Added the URL of the host that is currently being tested to the web UI.
+* We now also apply gevent's monkey patching of threads. This fixes an issue when 
+  using Locust to test Cassandra (https://github.com/locustio/locust/issues/569).
+* Various bug fixes and improvements
+
+
+0.7.5
+=====
+
+* Use version 1.1.1 of gevent. Fixes an install issue on certain versions of python.
+
+
+0.7.4
+=====
+
+* Use a newer version of requests, which fixed an issue for users with older versions of 
+  requests getting ConnectionErrors (https://github.com/locustio/locust/issues/273).
+* Various fixes to documentation.
+
+
+0.7.3
+=====
+
+* Fixed bug where POST requests (and other methods as well) got incorrectly reported as 
+  GET requests, if the request resulted in a redirect.
+* Added ability to download exceptions in CSV format. Download links has also been moved 
+  to it's own tab in the web UI.
+
+
+0.7.2
+=====
+
+* Locust now returns an exit code of 1 when any failed requests were reported.
+* When making an HTTP request to an endpoint that responds with a redirect, the original 
+  URL that was requested is now used as the name for that entry in the statistics (unless 
+  an explicit override is specified through the *name* argument). Previously, the last 
+  URL in the redirect chain was used to label the request(s) in the statistics.
+* Fixed bug which caused only the time of the last request in a redirect chain to be 
+  included in the reported time.
+* Fixed bug which caused the download time of the request body not to be included in the 
+  reported response time. 
+* Fixed bug that occurred on some linux dists that were tampering with the python-requests 
+  system package (removing dependencies which requests is bundling). This bug only occured 
+  when installing Locust in the python system packages, and not when using virtualenv.
+* Various minor fixes and improvements.
+
+
 0.7.1
 =====
 
@@ -9,6 +67,9 @@ Changelog
 * Fixed bug which caused Min response time to always be 0 after all locusts had been hatched
   and the statistics had been reset.
 * Minor UI improvements in the web interface.
+* Handle messages from "zombie" slaves by ignoring the message and making a log entry 
+  in the master process.
+
 
 
 0.7
@@ -315,7 +376,7 @@ Smaller API Changes
   the current way of writing Locust tests, where tasks are either methods under a Locust class or SubLocust 
   classes containing task methods.
 * Changed signature of :func:`locust.core.Locust.schedule_task`. Previously all extra arguments that
-  was given to the method was passed on to the the task when it was called. It no longer accepts extra arguments. 
+  was given to the method was passed on to the task when it was called. It no longer accepts extra arguments.
   Instead, it takes an *args* argument (list) and a *kwargs* argument (dict) which are be passed to the task when 
   it's called.
 * Arguments for :py:class:`request_success <locust.events.request_success>` event hook has been changed. 
